@@ -53,6 +53,7 @@ export default function InviteLandingPage() {
             localStorage.setItem('interviewId', data.session_id);
             localStorage.setItem('interviewDuration', String(data.duration_secs));
             localStorage.setItem('roundType', data.round_type);
+            localStorage.setItem('isInviteFlow', 'true');
             navigate('/interview');
         } catch {
             setError('Failed to upload resume');

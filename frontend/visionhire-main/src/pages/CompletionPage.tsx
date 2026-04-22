@@ -89,15 +89,16 @@ export default function CompletionPage() {
     // Log score to progress history
     const raw = localStorage.getItem('finalReport');
     let parsed: ReportData | null = null;
-    if (raw) {
+    if (raw && !localStorage.getItem('isInviteFlow')) {
       try {
         const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
         parsed = JSON.parse(clean);
         setData(parsed);
       } catch { parsed = MOCK_REPORT; setData(MOCK_REPORT); }
     } else {
-      // Invite flow: no local report — show submitted message, don't use mock
+      // Invite flow: no local report or explicit invite flow flag — show submitted message
       setLoading(false);
+      localStorage.removeItem('isInviteFlow'); // clean up flag
       return;
     }
     setLoading(false);
@@ -141,9 +142,10 @@ export default function CompletionPage() {
 
   if (!data) return null;
 
-  const isHired = data.verdict.toLowerCase().includes('shortlist') || data.verdict.toLowerCase().includes('hire');
+  const safeVerdict = data.verdict || '';
+  const isHired = safeVerdict.toLowerCase().includes('shortlist') || safeVerdict.toLowerCase().includes('hire');
   const circumference = 2 * Math.PI * 60;
-  const offset = circumference - (circumference * data.resume_score) / 100;
+  const offset = circumference - (circumference * (data.resume_score || 0)) / 100;
 
   return (
     <div className="min-h-screen p-4 md:p-6" style={{ background: '#0a0f1e' }}>
