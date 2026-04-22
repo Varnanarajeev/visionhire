@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mic, MicOff, Loader2, Zap, MessageSquare, Clock } from 'lucide-react';
+import { Mic, MicOff, Loader2, Zap, MessageSquare, Clock, LogOut } from 'lucide-react';
 
 
 const API_URL = "http://localhost:8000";
@@ -15,7 +15,7 @@ export default function InterviewSessionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [textAnswer, setTextAnswer] = useState('');
   const [useText, setUseText] = useState(false);
-  const [sessionOver, setSessionOver] = useState(false);
+  const [sessionOver, setSessionOver] = useState(false); // kept for concludeInterview usage
   const [readyScreen, setReadyScreen] = useState(true);   // show pre-interview screen
   const [cameraReady, setCameraReady] = useState(false);  // camera granted
   const [cameraError, setCameraError] = useState(false);  // camera denied
@@ -34,13 +34,27 @@ export default function InterviewSessionPage() {
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
-    // Request camera on mount so user can see preview on ready screen
+    // Request camera immediately on mount
     requestCamera();
+
+    // CLEANUP: stop everything when user navigates away (back button, tab close, etc.)
     return () => {
+      window.speechSynthesis.cancel();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
       if (timerRef.current) clearInterval(timerRef.current);
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
   }, []);
+
+  // Sync stream to video element — fires when loading ends (interview page mounts) OR readyScreen changes
+  useEffect(() => {
+    if (streamRef.current && videoRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [cameraReady, readyScreen, loading]);
 
   const requestCamera = async () => {
     setCameraError(false);
@@ -52,6 +66,27 @@ export default function InterviewSessionPage() {
     } catch {
       setCameraReady(false);
       setCameraError(true);
+    }
+  };
+
+  const stopEverything = useCallback(() => {
+    window.speechSynthesis.cancel();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    sessionOverRef.current = true;
+  }, []);
+
+  const handleQuit = () => {
+    if (window.confirm('Are you sure you want to quit the interview? Your progress will be lost.')) {
+      stopEverything();
+      navigate('/home');
     }
   };
 
@@ -300,6 +335,14 @@ export default function InterviewSessionPage() {
           <div className="px-3 py-1.5 rounded-full text-xs font-semibold text-slate-400" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
             Q{questionCount}
           </div>
+          {/* Quit button */}
+          <button
+            onClick={handleQuit}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-red-400 hover:bg-red-500/10 transition-all"
+            style={{ border: '1px solid rgba(239,68,68,0.25)' }}
+          >
+            <LogOut className="w-3.5 h-3.5" /> Quit
+          </button>
         </div>
       </div>
 

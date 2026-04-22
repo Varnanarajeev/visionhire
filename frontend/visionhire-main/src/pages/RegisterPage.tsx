@@ -17,12 +17,15 @@ export default function RegisterPage() {
         setLoading(true);
         setError('');
         try {
+            const previousEmail = localStorage.getItem('user_email');
             await auth.register(email, password, fullName, role);
             await auth.login(email, password);
-            // Clear any previous user's data so new user starts fresh
-            localStorage.removeItem('interviewHistory');
-            localStorage.removeItem('finalReport');
-            localStorage.removeItem('lastLoggedReport');
+            // Only wipe progress if a truly different user is registering
+            if (!previousEmail || previousEmail !== email) {
+                localStorage.removeItem('interviewHistory');
+                localStorage.removeItem('finalReport');
+                localStorage.removeItem('lastLoggedReport');
+            }
             navigate(role === 'recruiter' ? '/recruiter' : '/upload');
         } catch (err: any) {
             if (err?.response?.status === 400) {

@@ -15,11 +15,14 @@ export default function LoginPage() {
         setLoading(true);
         setError('');
         try {
+            const previousEmail = localStorage.getItem('user_email');
             const data = await auth.login(email, password);
-            // Clear any previous user's local data
-            localStorage.removeItem('interviewHistory');
-            localStorage.removeItem('finalReport');
-            localStorage.removeItem('lastLoggedReport');
+            // Only clear progress if a DIFFERENT user is logging in
+            if (previousEmail && previousEmail !== email) {
+                localStorage.removeItem('interviewHistory');
+                localStorage.removeItem('finalReport');
+                localStorage.removeItem('lastLoggedReport');
+            }
             if (data.role === 'admin') {
                 navigate('/admin');
             } else if (data.role === 'recruiter') {
